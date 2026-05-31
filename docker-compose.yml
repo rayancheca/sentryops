@@ -1,0 +1,86 @@
+name: sentryops
+
+# Shared backend env: api and worker run from the same image with different commands.
+x-backend-env: &backend-env
+  env_file:
+    - .env
+  environment:
+    DATABASE_URL: postgresql+psycopg://sentryops:sentryops@postgres:5432/sentryops
+    REDIS_URL: redis://redis:6379/0
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sentryops
+      POSTGRES_PASSWORD: sentryops
+      POSTGRES_DB: sentryops
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentryops -d sentryops"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    ports:
+      - "6379:6379"
+
+  api:
+    build: ./backend
+    <<: *backend-env
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+    ports:
+      - "8000:8000"
+
+  worker:
+    build: ./backend
+    <<: *backend-env
+    command: ["python", "-m", "app.workers.run"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  redisdata:

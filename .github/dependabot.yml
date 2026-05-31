@@ -1,0 +1,47 @@
+version: 2
+updates:
+  # Backend (FastAPI / SQLAlchemy) — Python dependencies in backend/pyproject.toml.
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "backend"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      backend-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Frontend (Next.js) — npm/pnpm dependencies in web/package.json.
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      frontend-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # CI workflows in .github/workflows.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"
