@@ -1,0 +1,114 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentryops"
+version = "0.1.0"
+description = "Self-hosted IT operations command center: CMDB, compliance, observability, and AI incident triage."
+readme = "../README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Rayan Karimcheca" }]
+dependencies = [
+    "fastapi>=0.115,<0.200",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy>=2.0.36,<2.1",
+    "alembic>=1.14",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.10,<3",
+    "pydantic-settings>=2.6",
+    "pyjwt>=2.10",
+    "argon2-cffi>=23.1",
+    "python-multipart>=0.0.12",
+    "redis>=5.2",
+    "rq>=2.0",
+    "httpx>=0.28",
+    "segno>=1.6",
+    "prometheus-client>=0.21",
+    "structlog>=24.4",
+    "slowapi>=0.1.9",
+    "anthropic>=0.40",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "pytest-asyncio>=0.24",
+    "freezegun>=1.5",
+    "mypy>=1.13",
+    "ruff>=0.8",
+    "black>=24.10",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+# ---------------------------------------------------------------------------
+# Ruff (lint) — black owns formatting, so ruff is lint-only here.
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["app/db/migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "C4", "SIM", "ASYNC", "S"]
+# B008: FastAPI Depends() in defaults is the idiom.
+# UP046/UP047: we deliberately keep the explicit `Generic[T]` style for Pydantic models.
+ignore = ["B008", "E501", "UP046", "UP047"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "S106"]
+"scripts/*" = ["S101", "S105", "S106", "S311"]
+# token_type="bearer" is an OAuth field name, not a credential.
+"app/schemas/auth.py" = ["S105"]
+# ATTR_PASSWORD_MAX_AGE_DAYS is a config-key name, not a credential value.
+"app/compliance/rules/_helpers.py" = ["S105"]
+# Default secrets are placeholders replaced via env vars at runtime.
+"app/core/config.py" = ["S105"]
+# Teardown OSError after a successful TCP probe is not a probe failure.
+"app/observability/checks.py" = ["SIM105"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+extend-exclude = "app/db/migrations/versions"
+
+# ---------------------------------------------------------------------------
+# mypy (strict)
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+show_error_codes = true
+exclude = ["app/db/migrations/", "tests/", "scripts/"]
+
+[[tool.mypy.overrides]]
+module = ["segno.*", "slowapi.*", "rq.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# pytest + coverage
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+    "unit: pure-logic unit tests (no database)",
+    "integration: tests that exercise the database and HTTP layer",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/db/migrations/*", "app/main.py", "app/workers/run.py"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]
