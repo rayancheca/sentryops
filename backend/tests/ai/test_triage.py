@@ -96,9 +96,7 @@ def test_disabled_path_persists_disabled_and_never_calls_client(
     monkeypatch: pytest.MonkeyPatch, stub_incident_service: list[dict[str, Any]]
 ) -> None:
     # Arrange: feature off.
-    monkeypatch.setattr(
-        triage_mod.get_settings(), "ai_triage_enabled", False, raising=False
-    )
+    monkeypatch.setattr(triage_mod.get_settings(), "ai_triage_enabled", False, raising=False)
     # Guard: any client call should fail the test if reached.
     monkeypatch.setattr(
         triage_mod.AnthropicTriageClient,

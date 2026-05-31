@@ -7,10 +7,10 @@ import pytest
 from app.ai.client import (
     AnthropicTriageClient,
     _extract_json_object,
+    _RawResponse,
     _scan_balanced_object,
     estimate_cost,
 )
-from app.ai.client import _RawResponse
 from app.core.exceptions import ValidationAppError
 
 

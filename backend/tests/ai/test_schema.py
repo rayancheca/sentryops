@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from app.ai.schema import (
     MAX_REMEDIATION_STEPS,
@@ -54,9 +55,7 @@ def test_confidence_non_numeric_defaults_to_zero() -> None:
 
 def test_remediation_steps_capped_at_eight() -> None:
     raw = _valid_raw()
-    raw["remediation_steps"] = [
-        {"step": f"step {i}", "priority": 2} for i in range(20)
-    ]
+    raw["remediation_steps"] = [{"step": f"step {i}", "priority": 2} for i in range(20)]
     output = TriageOutput.parse_clamped(raw)
     assert len(output.remediation_steps) == MAX_REMEDIATION_STEPS
 
@@ -117,7 +116,7 @@ def test_extra_keys_are_rejected_then_recovered_by_parse_clamped() -> None:
 
 
 def test_direct_construction_forbids_extra() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         TriageOutput(
             root_cause_hypothesis="x",
             confidence=0.5,
